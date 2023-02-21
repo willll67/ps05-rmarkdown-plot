@@ -1,5 +1,5 @@
 ---
-title: "assignment"
+title: "Assignment"
 author: "William Li"
 date: "2023-02-17"
 output: html_document
@@ -9,22 +9,244 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+## 1. Load and check data (5pt)
+You first task is to do a very simple data check:
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+1. (1pt) For solving the problems, and answering the questions, create a new rmarkdown document with an appropriate title. See https://faculty.washington.edu/otoomet/info201-book/
+r-markdown.html#r-markdown-rstudio-creating.
 
-```{r cars}
-summary(cars)
+2. (2pt) Load data. How many rows/columns do we have?
+```{r }
+library(tidyverse)
+gm <- read_delim("data/gapminder (1).csv.bz2")
+nrow(gm)
+ncol(gm)
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+3. (2pt) Print a small sample of data. Does it look OK?
+```{r }
+gm %>% 
+  head()
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## 2. Descriptive statistics (15pt)
+1. (3pt) How many countries are there in the dataset? Analyze all three: iso3, iso2 and name.
+```{r }
+gm %>% 
+  select(iso3) %>% 
+  unique() %>% 
+  count()
+
+gm %>% 
+  select(name) %>% 
+  unique() %>% 
+  count()
+
+gm %>% 
+  select(iso2) %>% 
+  unique() %>% 
+  count()
+```
+
+2. If you did this correctly, you saw that there are more names than iso-2 codes, and there are even more iso3 -codes. What is going on? Can you find it out?
+
+(a) (5pt) Find how many names are there for each iso-2 code. Are there any iso-2 codes that correspond to more than one name? What are these countries?
+```{r }
+
+```
+(b) (5pt) Now repeat the same for name and iso3-code. Are there country names that have more than one iso3-code? What are these countries?
+Hint: two of these entitites are CHANISL and NLD CURACAO.
+```{r }
+
+```
+
+3. (2pt) What is the minimum and maximum year in these data?
+```{r }
+min(gm$time, na.rm = TRUE)
+max(gm$time, na.rm = TRUE)
+```
+
+## 3. CO2 emissions (30pt)
+Next, let’s analyze CO2 emissions.
+
+1. (2pt) How many missing co2 emissions are there for each year? Analyze both missing CO2 and co2_PC. Which years have most missing data?
+```{r }
+gm %>% 
+  group_by(time) %>% 
+  summarize(missing = sum(is.na(co2)), missing_pc = sum(is.na(co2_PC)))
+
+gm %>% 
+  group_by(time) %>% 
+  summarize(missing = sum(is.na(co2)) + sum(is.na(co2_PC))) %>% 
+  arrange(desc(missing))
+```
+
+2. (5pt) Make a plot of total CO2 emissions over time for the U.S, China, and India. Add a few more countries of your choice. Explain what do you see.
+```{r warning=FALSE}
+target <- c("United States of America", "China", "India", 
+            "Russian Federation", "Canada")
+gm %>%
+  filter(name %in% target) %>% 
+  ggplot(aes(time, co2, col = name)) +
+  geom_line() +
+  theme_minimal()
+```
+
+*From the figure above, I found that the CO2 emissions in **USA, CANADA, INDIA** are steadily **increasing**. Furthermore, after the disintegration of the Soviet Union in 1991, the emissions in Russia seemed to show a huge **drop**. And when it comes to China, the emission has been rising dramatically after the reform in 1978.*   
+
+
+3. (5pt) Now let’s analyze the CO2 emissions per capita (co2_PC ). Make a similar plot of the same countries. What does this figure suggest?
+```{r }
+gm %>% 
+  filter(name %in% target) %>% 
+  ggplot(aes(time, co2_PC, col = name)) +
+  geom_line() +
+  theme_minimal()
+```
+*This figure suggests 
+
+4. (6pt) Compute average CO2 emissions per capita across the continents (assume region is the same as continent). Comment what do you see.
+Note: just compute averages over countries and ignore the fact that countries are of different size.
+Hint: Americas 2016 should be 4.80.
+```{r }
+ave <- gm %>% 
+  group_by(region, time) %>% 
+  summarize(average_co2 = mean(co2_PC, na.rm = TRUE)) %>% 
+  mutate(region = ifelse(region == "", NA, region)) %>% 
+  drop_na()
+ave
+```
+
+5. (7pt) Make a barplot where you show the previous results–average CO2 emissions per capita across continents in 1960 and 2016.
+```{r }
+ave %>% 
+  mutate(time = as.factor(time)) %>% 
+  filter(time %in% c(1960,2016)) %>% 
+  ggplot(aes(time, average_co2, fill=region)) + 
+  geom_bar(stat = "identity",position = "dodge") + 
+  theme_minimal() 
+```
+
+6. Which countries are the three largest, and three smallest CO2 emitters (in terms of CO2 per capita) in 2019 for each continent? (Assume region is continent).
+```{r }
+largest <- gm %>% 
+  mutate(region = ifelse(region=="", NA, region)) %>% 
+  filter(time==2016) %>% 
+  select(region, name, co2_PC) %>% 
+  drop_na() %>% 
+  group_by(region) %>% 
+  arrange(desc(co2_PC)) %>% 
+  top_n(3,co2_PC)
+
+
+smallest <- gm %>% 
+  mutate(region = ifelse(region=="", NA, region)) %>% 
+  filter(time==2016) %>% 
+  select(region, name, co2_PC) %>% 
+  drop_na() %>% 
+  group_by(region) %>% 
+  arrange(co2_PC) %>% 
+  top_n(3, co2_PC)
+smallest
+
+```
+
+## 4. GDP per capita (50pt)
+Let’s look at GDP per capita (GDP_PC ).
+
+1. (8pt) Make a scatterplot of GDP per capita versus life expectancy by country, using data for 1960. Make the point size dependent on the country size, and color those according to the continent. Feel free to adjust the plot in other ways to make it better. Comment what do you see there.
+```{r warning=FALSE}
+p1 <- gm %>%  
+  filter(time == 1960, region!="") %>% 
+  ggplot(aes(GDP_PC, lifeExpectancy, size = totalPopulation, col = region)) + 
+  geom_point(alpha=0.7) + 
+  theme_classic() + 
+  labs(title = "GDP per capita versus life expectancy on 1960")
+p1
+```
+*The
+
+2. (4pt) Make a similar plot, but this time use 2019 data only.
+```{r warning=FALSE}
+p2 <- gm %>%  
+  filter(time == 2019, region!="") %>% 
+  ggplot(aes(GDP_PC, lifeExpectancy, size=totalPopulation, col=region)) + 
+  geom_point(alpha=0.7) + 
+  theme_classic() + 
+  labs(title = "GDP per capita versus life expectancy on 2019")
+p2
+```
+
+3. (6pt) Compare these two plots and comment what do you see. How has world developed through the last 60 years?
+```{r warning=FALSE}
+library(patchwork)
+p1 + p2
+```
+
+
+4. (6pt) Compute the average life expectancy for each continent in 1960 and 2019. Do the results fit with what do you see on the figures?
+Note: here as average I mean just average over countries, ignore the fact that countries are of different size.
+```{r }
+gm %>% 
+  filter(time %in% c(1960, 2019), region!= "") %>% 
+  group_by(region, time) %>% 
+  summarize(Aver_lifeExpectancy = mean(lifeExpectancy, na.rm = TRUE))
+```
+
+5. (8pt) Compute the average LE growth from 1960-2019 across the continents. Show the resultsin the order of growth. Explain what do you see.
+Hint: these data (data in long form) is not the simplest to compute growth. But you may want to check out the lag() function. And do not forget to group data by continent when using lag(), otherwise your results will be messed up! See https://faculty.washington.edu/otoomet/info201-book/dplyr.html#dplyr-helpers-compute.
+```{r }
+averageLE <- gm %>% 
+  filter(time %in% c(1960:2019), region!="") %>% 
+  group_by(region, time) %>% 
+  summarise(totalpopulation = sum(totalPopulation, na.rm = T)) %>% 
+  mutate(Lag = lag(totalpopulation),
+         LE_growth = (totalpopulation-Lag) / Lag)
+
+averageLE1 <- averageLE %>% 
+  group_by(region) %>% 
+  summarize(Aver_LE = mean(LE_growth, na.rm = TRUE)) %>% 
+  arrange(Aver_LE)
+averageLE1
+```
+
+6. (6pt) Show the histogram of GDP per capita for years of 1960 and 2019. Try to put both histograms on the same graph, see how well you can do it!
+```{r warning=FALSE}
+gm %>% 
+  filter(time %in% c(1960,2019)) %>% 
+  mutate(time = as.factor(time)) %>% 
+  ggplot(aes(GDP_PC, fill=time)) + 
+  geom_histogram(position = "dodge") + 
+  theme_bw() +
+  labs(title = "GDP Per Capita for Years of 2016 and 2019")
+```
+
+7. (6pt) What was the ranking of US in terms of life expectancy in 1960 and in 2019? (When counting from top.)
+Hint: check out the function rank()!
+Hint2: 17 for 1960.
+```{r }
+ranking <- gm %>% 
+  filter(name != "") %>% 
+  select(name, time, lifeExpectancy) %>% 
+  group_by(time) %>% 
+  mutate(rank = rank(-lifeExpectancy))
+
+ranking %>% 
+  filter(name == "United States of America", time %in% c(1960, 2019))
+```
+
+8. (6pt) If you did this correctly, then you noticed that US ranking has been falling quite a bit. But we also have more countries in 2019–what about the relative rank divided by the corresponding number of countries that have LE data in the corresponding year?
+Hint: 0.0904 for 1960.
+```{r warning=FALSE}
+rl <- gm %>% 
+  filter(time %in% c(1960:2019), name!= "") %>% 
+  group_by(name, time) %>% 
+  summarise(totalpopulation = sum(totalPopulation, na.rm = TRUE)) %>% 
+  mutate(Lag = lag(totalpopulation), LE_growth = (totalpopulation-Lag)/Lag)
+rl1 <- ranking %>% 
+  left_join(rl, by=c("name","time")) %>% 
+  mutate(RL = rank / LE_growth) %>% 
+ drop_na()
+rl
+```
