@@ -52,14 +52,21 @@ gm %>%
 2. If you did this correctly, you saw that there are more names than iso-2 codes, and there are even more iso3 -codes. What is going on? Can you find it out?
 
 (a) (5pt) Find how many names are there for each iso-2 code. Are there any iso-2 codes that correspond to more than one name? What are these countries?
-```{r }
-
+```{r message=FALSE}
+gm %>% 
+  group_by(iso2, name) %>% 
+  summarize(name_num = n_distinct(name)) 
 ```
+*iso2 code NA corresponds to two country names, one is Namiibia and another is a NA*
+
 (b) (5pt) Now repeat the same for name and iso3-code. Are there country names that have more than one iso3-code? What are these countries?
 Hint: two of these entitites are CHANISL and NLD CURACAO.
-```{r }
-
+```{r message=FALSE}
+gm %>% 
+  group_by(name, iso3) %>% 
+  summarize(num = n_distinct(iso3))
 ```
+*The "NA" names have more than one iso3-code. But I am not sure what does "What are these countries" mean since I didn't find any names here rather than NA.*
 
 3. (2pt) What is the minimum and maximum year in these data?
 ```{r }
@@ -81,6 +88,7 @@ gm %>%
   summarize(missing = sum(is.na(co2)) + sum(is.na(co2_PC))) %>% 
   arrange(desc(missing))
 ```
+*2017, 2018 and 2019 have the most missing data.*
 
 2. (5pt) Make a plot of total CO2 emissions over time for the U.S, China, and India. Add a few more countries of your choice. Explain what do you see.
 ```{r warning=FALSE}
@@ -97,19 +105,19 @@ gm %>%
 
 
 3. (5pt) Now let’s analyze the CO2 emissions per capita (co2_PC ). Make a similar plot of the same countries. What does this figure suggest?
-```{r }
+```{r warning=FALSE}
 gm %>% 
   filter(name %in% target) %>% 
   ggplot(aes(time, co2_PC, col = name)) +
   geom_line() +
   theme_minimal()
 ```
-*This figure suggests 
+*This figure suggests that the per capita emissions are still relatively high in the US, Russia and Canada. But the overall trend looks like the same as before.*
 
 4. (6pt) Compute average CO2 emissions per capita across the continents (assume region is the same as continent). Comment what do you see.
 Note: just compute averages over countries and ignore the fact that countries are of different size.
 Hint: Americas 2016 should be 4.80.
-```{r }
+```{r message=FALSE}
 ave <- gm %>% 
   group_by(region, time) %>% 
   summarize(average_co2 = mean(co2_PC, na.rm = TRUE)) %>% 
@@ -117,6 +125,7 @@ ave <- gm %>%
   drop_na()
 ave
 ```
+*Prior to 1963, state per capita emissions were increasing, then steadily declining and stabilizing; only Africa has been slightly increasing, but it is still far behind the other four continents.*
 
 5. (7pt) Make a barplot where you show the previous results–average CO2 emissions per capita across continents in 1960 and 2016.
 ```{r }
@@ -132,24 +141,23 @@ ave %>%
 ```{r }
 largest <- gm %>% 
   mutate(region = ifelse(region=="", NA, region)) %>% 
-  filter(time==2016) %>% 
+  filter(time == 2016) %>% 
   select(region, name, co2_PC) %>% 
   drop_na() %>% 
   group_by(region) %>% 
   arrange(desc(co2_PC)) %>% 
-  top_n(3,co2_PC)
-
+  top_n(3,co2_PC) 
+largest
 
 smallest <- gm %>% 
   mutate(region = ifelse(region=="", NA, region)) %>% 
-  filter(time==2016) %>% 
+  filter(time == 2016) %>% 
   select(region, name, co2_PC) %>% 
   drop_na() %>% 
   group_by(region) %>% 
   arrange(co2_PC) %>% 
   top_n(3, co2_PC)
 smallest
-
 ```
 
 ## 4. GDP per capita (50pt)
@@ -165,7 +173,9 @@ p1 <- gm %>%
   labs(title = "GDP per capita versus life expectancy on 1960")
 p1
 ```
-*The
+
+*I see that when per capita Income increases, so does people's happiness index, and Europe is generally higher than the other four continents.*
+ 
 
 2. (4pt) Make a similar plot, but this time use 2019 data only.
 ```{r warning=FALSE}
@@ -184,19 +194,22 @@ library(patchwork)
 p1 + p2
 ```
 
+*It is clear from looking at the data that in the last sixty years, Asia has seen fast development, and as a result, people's life expectancy has grown dramatically. And most of the continents' people's life expectancy didn't change a lot.*
+
 
 4. (6pt) Compute the average life expectancy for each continent in 1960 and 2019. Do the results fit with what do you see on the figures?
 Note: here as average I mean just average over countries, ignore the fact that countries are of different size.
-```{r }
+```{r message=FALSE}
 gm %>% 
   filter(time %in% c(1960, 2019), region!= "") %>% 
   group_by(region, time) %>% 
   summarize(Aver_lifeExpectancy = mean(lifeExpectancy, na.rm = TRUE))
 ```
+*Similar to the image above, in Asia, people's life expectancy has surpassed that of most other continents in the last 60 years.*
 
 5. (8pt) Compute the average LE growth from 1960-2019 across the continents. Show the resultsin the order of growth. Explain what do you see.
 Hint: these data (data in long form) is not the simplest to compute growth. But you may want to check out the lag() function. And do not forget to group data by continent when using lag(), otherwise your results will be messed up! See https://faculty.washington.edu/otoomet/info201-book/dplyr.html#dplyr-helpers-compute.
-```{r }
+```{r message=FALSE}
 averageLE <- gm %>% 
   filter(time %in% c(1960:2019), region!="") %>% 
   group_by(region, time) %>% 
@@ -210,9 +223,10 @@ averageLE1 <- averageLE %>%
   arrange(Aver_LE)
 averageLE1
 ```
+*I see that Africa has had the world's **highest annual** rate of population expansion on average.*
 
 6. (6pt) Show the histogram of GDP per capita for years of 1960 and 2019. Try to put both histograms on the same graph, see how well you can do it!
-```{r warning=FALSE}
+```{r message=FALSE}
 gm %>% 
   filter(time %in% c(1960,2019)) %>% 
   mutate(time = as.factor(time)) %>% 
@@ -239,14 +253,17 @@ ranking %>%
 8. (6pt) If you did this correctly, then you noticed that US ranking has been falling quite a bit. But we also have more countries in 2019–what about the relative rank divided by the corresponding number of countries that have LE data in the corresponding year?
 Hint: 0.0904 for 1960.
 ```{r warning=FALSE}
-rl <- gm %>% 
-  filter(time %in% c(1960:2019), name!= "") %>% 
-  group_by(name, time) %>% 
-  summarise(totalpopulation = sum(totalPopulation, na.rm = TRUE)) %>% 
-  mutate(Lag = lag(totalpopulation), LE_growth = (totalpopulation-Lag)/Lag)
-rl1 <- ranking %>% 
-  left_join(rl, by=c("name","time")) %>% 
-  mutate(RL = rank / LE_growth) %>% 
+temp7 <- gm %>% 
+  filter(time %in% c(1960:2019),
+         name!="") %>% 
+  group_by(name,time) %>% 
+  summarise(totalpopulation = sum(totalPopulation,na.rm = T)) %>% 
+  mutate(Lag = lag(totalpopulation),
+         LE_growth = (totalpopulation-Lag)/Lag)
+
+temp8 <- ranking %>% 
+  left_join(temp7,by=c("name","time")) %>% 
+  mutate(RL = rank/LE_growth) %>% 
  drop_na()
-rl
+temp7
 ```
